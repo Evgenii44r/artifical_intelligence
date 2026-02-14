@@ -1,37 +1,29 @@
-from diffusers import DiffusionPipeline
-from PIL import Image
 import torch
-import time
+from diffusers import StableDiffusionPipeline
 
 
-def generate_fast():
-    print("Загрузка легкой модели...")
+def dummy_safety_checker(images, clip_input):
+    return images, [False] * len(images)
 
-    # Используем маленькую модель (работает быстрее на CPU)
-    pipe = DiffusionPipeline.from_pretrained(
-        "OFA-Sys/small-stable-diffusion-v0",
-        safety_checker=None,
-        requires_safety_checker=False
+
+def generate_image(
+    prompt="A beautiful tree in a sunny forest",
+    output_path="tree.png"
+):
+    pipe = StableDiffusionPipeline.from_pretrained(
+        "CompVis/stable-diffusion-v1-4"
     )
 
-    # Оптимизация
-    pipe.enable_attention_slicing()
-    torch.set_num_threads(4)
-    pipe = pipe.to("cpu")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    pipe.to(device)
 
-    print("Генерация...")
-    image = pipe(
-        "a cat sitting on a bench",
-        num_inference_steps=15,
-        height=256,
-        width=256
-    ).images[0]
+    pipe.safety_checker = dummy_safety_checker
 
-    # Увеличиваем
-    image = image.resize((512, 512), Image.Resampling.LANCZOS)
-    image.save("fast_cat.png")
-    print("Готово! Изображение сохранено как fast_cat.png")
+    image = pipe(prompt).images[0]
+    image.save(output_path)
+
+    print(f"Изображение сохранено как {output_path}")
 
 
-if __name__ == "__main__":
-    generate_fast()
+if name == "main":
+    generate_image()
